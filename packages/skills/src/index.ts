@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 export interface Skill { id: string; path: string; instructions: string }
-async function walk(root: string, at = root, output: string[] = []): Promise<string[]> { const entries = await readdir(at, { withFileTypes: true }).catch(() => []); for (const entry of entries) { const full = join(at, entry.name); if (entry.isDirectory()) await walk(root, full, output); else if (entry.isFile() && entry.name === "SKILL.md") output.push(relative(root, full)); } return output; }
+async function walk(root: string, at = root, output: string[] = []): Promise<string[]> { const entries = await readdir(at, { withFileTypes: true }).catch(() => []); for (const entry of entries) { const full = join(at, entry.name); if (entry.isDirectory()) await walk(root, full, output); else if (entry.isFile() && entry.name === "SKILL.md") output.push(relative(root, full).replaceAll("\\", "/")); } return output; }
 /** Finds local, repository-scoped skills. Only these roots are searched; unrelated files never become instructions. */
 export class SkillRegistry {
   constructor(private readonly workspace: string, private readonly enabled: string[] = []) {}

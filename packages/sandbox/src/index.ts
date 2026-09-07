@@ -37,7 +37,7 @@ export class RemoteSandbox implements Sandbox {
     if (!this.workspaceRoot) return path;
     const value = relative(this.workspaceRoot, path);
     if (value.startsWith("..") || /^(?:\/|\\)/.test(value)) throw new Error("Remote sandbox path escapes configured workspace");
-    return value || ".";
+    return value.replaceAll("\\", "/") || ".";
   }
   async execute(command: Command) { return this.remote.execute({ workspaceId: this.workspaceId, command: { ...command, ...(command.cwd ? { cwd: this.remotePath(command.cwd) } : {}) } }); }
   async readFile(path: string) { return this.remote.readFile({ workspaceId: this.workspaceId, path: this.remotePath(path) }); }
