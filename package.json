@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Extensible, repository-aware coding-agent harness",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paranjay31/polyglot-agent-harness.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paranjay31/polyglot-agent-harness/issues"
+  },
+  "homepage": "https://github.com/paranjay31/polyglot-agent-harness#readme",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
