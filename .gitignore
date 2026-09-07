@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+.idea/
+*.tgz
+.agent/sessions/
+.agent/logs/
+.agent/index/
+.agent/config.json

@@ -1,0 +1,19 @@
+import { randomUUID } from "node:crypto";
+import type { Task } from "../../shared/src/index.js";
+import { z } from "zod";
+import type { ToolRegistry } from "../../tool-runtime/src/index.js";
+export type SubagentRole = "explorer" | "planner" | "reviewer" | "tester" | "debugger" | "custom";
+export interface SubagentSpec { role: SubagentRole; prompt: string; workspace: string; allowedTools: string[]; maxTurns: number; tokenBudget: number; timeoutMs: number }
+export interface SubagentResult { id: string; role: SubagentRole; status: "completed" | "failed" | "timed_out"; summary?: string; error?: string; artifacts?: Record<string, unknown> }
+export interface IsolatedExecutor { run(task: Task, options: { maxTurns: number; tokenBudget: number; signal: AbortSignal }): Promise<{ state: string; summary?: string; error?: string }> }
+export interface SubagentFactory { create(spec: SubagentSpec): IsolatedExecutor }
+/** Factory-created executors ensure no parent tool context or conversation is implicitly shared. */
+export class SubagentRunner {
+  constructor(private readonly factory: SubagentFactory) {}
+  async run(spec: SubagentSpec): Promise<SubagentResult> { const id = randomUUID(); const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), spec.timeoutMs); try { const executor = this.factory.create(spec); const result = await executor.run({ id, workspace: spec.workspace, prompt: `[${spec.role}] ${spec.prompt}\nAllowed tools: ${spec.allowedTools.join(", ")}` }, { maxTurns: spec.maxTurns, tokenBudget: spec.tokenBudget, signal: controller.signal }); return controller.signal.aborted ? { id, role: spec.role, status: "timed_out", error: "Subagent timeout" } : result.state === "completed" ? { id, role: spec.role, status: "completed", summary: result.summary } : { id, role: spec.role, status: "failed", error: result.error ?? result.state }; } finally { clearTimeout(timer); } }
+  async runAll(specs: SubagentSpec[]) { return Promise.all(specs.map(spec => this.run(spec))); }
+}
+export interface SubagentToolOptions { workspace: string; maxTurns?: number; tokenBudget?: number; timeoutMs?: number; allowedTools?: Partial<Record<SubagentRole, string[]>> }
+const defaultTools: Record<SubagentRole, string[]> = { explorer: ["repository_map", "find_files", "search_code", "find_symbol", "find_references", "get_dependencies", "read_file"], planner: ["repository_map", "find_files", "search_code", "find_symbol", "get_dependencies", "read_file"], reviewer: ["git_status", "git_diff", "search_code", "find_symbol", "read_file"], tester: ["repository_map", "read_file", "shell"], debugger: ["repository_map", "search_code", "find_symbol", "read_file", "shell"], custom: ["repository_map", "search_code", "read_file"] };
+/** Exposes bounded, role-scoped child work through the same policy-gated registry. */
+export function registerSubagentTool(registry: ToolRegistry, runner: SubagentRunner, options: SubagentToolOptions) { registry.register({ name: "delegate", description: "Delegate a bounded investigation, review, or test task to an isolated role-scoped subagent.", permission: "subagent", modelSchema: { type: "object", properties: { role: { type: "string", enum: Object.keys(defaultTools) }, prompt: { type: "string" } }, required: ["role", "prompt"], additionalProperties: false }, inputSchema: z.object({ role: z.enum(["explorer", "planner", "reviewer", "tester", "debugger", "custom"]), prompt: z.string().min(1).max(12_000) }), async execute({ role, prompt }: { role: SubagentRole; prompt: string }) { const result = await runner.run({ role, prompt, workspace: options.workspace, allowedTools: options.allowedTools?.[role] ?? defaultTools[role], maxTurns: options.maxTurns ?? 4, tokenBudget: options.tokenBudget ?? 8_000, timeoutMs: options.timeoutMs ?? 60_000 }); return { content: JSON.stringify(result), data: result }; } }); }

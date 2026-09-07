@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { JavaPlugin } from "../../plugins/java/src/index.js";
+import { LocalRepositoryKnowledgeProvider } from "../../packages/repository/src/index.js";
+import { LanguageEnrichedRepositoryKnowledgeProvider } from "../../packages/repository-intelligence/src/index.js";
+import { LocalSandbox } from "../../packages/sandbox/src/index.js";
+import { RulePolicyEngine } from "../../packages/policy/src/index.js";
+import { ToolRegistry, registerBuiltinTools } from "../../packages/tool-runtime/src/index.js";
+import { WorkspaceBoundary } from "../../packages/workspace/src/index.js";
+describe("language-enriched repository", () => it("activates detected plugins and exposes diagnostics through the tool registry", async () => { const root = await mkdtemp(join(tmpdir(), "harness-language-")); await writeFile(join(root, "pom.xml"), "<project />"); await writeFile(join(root, "Broken.java"), "public class Broken {\n"); await writeFile(join(root, "Use.java"), "class Use { Broken value; }\n"); const provider = new LanguageEnrichedRepositoryKnowledgeProvider(new LocalRepositoryKnowledgeProvider({ root }), { root }, [new JavaPlugin()]); const registry = new ToolRegistry(); registerBuiltinTools(registry); const context = { workspace: new WorkspaceBoundary(root), sandbox: new LocalSandbox(), policy: new RulePolicyEngine(), knowledge: provider }; expect((await provider.getSymbols({ name: "Broken" })).map(symbol => symbol.name)).toContain("Broken"); expect((await provider.getReferences("Broken")).map(reference => reference.file)).toContain("Use.java"); expect((await registry.invoke("get_diagnostics", { paths: ["Broken.java"] }, context)).content).toContain("Java syntax error"); }));

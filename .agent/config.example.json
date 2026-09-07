@@ -1,0 +1,22 @@
+{
+  "model": {
+    "provider": "deepseek",
+    "baseUrl": "https://api.deepseek.com",
+    "apiKeyEnv": "DEEPSEEK_API_KEY",
+    "name": "deepseek-v4-flash",
+    "roles": {
+      "planning": { "provider": "ollama", "baseUrl": "http://127.0.0.1:11434", "name": "qwen2.5-coder" }
+    },
+    "fallbacks": [
+      { "provider": "ollama", "baseUrl": "http://127.0.0.1:11434", "name": "qwen2.5-coder" }
+    ]
+  },
+  "permissions": { "mode": "review", "rules": [{ "permission": "shell", "target": "pnpm test*", "decision": "allow" }] },
+  "repositories": {
+    "backend": "../backend"
+  },
+  "sandbox": { "kind": "local" },
+  "lsp": { "command": "typescript-language-server", "args": ["--stdio"] },
+  "skills": { "enabled": [] },
+  "mcp": []
+}

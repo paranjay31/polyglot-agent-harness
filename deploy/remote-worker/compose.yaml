@@ -1,0 +1,15 @@
+services:
+  remote-worker:
+    build:
+      context: ../..
+      dockerfile: deploy/remote-worker/Dockerfile
+    environment:
+      PORT: "8790"
+      AGENT_REMOTE_WORKER_HOST: "0.0.0.0"
+      AGENT_REMOTE_WORKER_TOKEN: ${AGENT_REMOTE_WORKER_TOKEN:?set a long random token in your environment}
+      AGENT_REMOTE_WORKSPACES: '{"my-repository":"/workspaces/my-repository"}'
+    ports:
+      - "127.0.0.1:8790:8790"
+    volumes:
+      - ./workspace:/workspaces/my-repository:rw
+    restart: unless-stopped
