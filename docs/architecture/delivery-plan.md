@@ -26,6 +26,4 @@ This plan is ordered by a working vertical slice, not by the number of modules c
 
 ## Remaining delivery work
 
-The exact external validation sequence is recorded in [the release-readiness runbook](../operations/release-readiness.md).
-
-1. Configure npm trusted publishing and publish the repeatedly verified installable release artifact. This requires the package owner to authorize an npm publication and configure npm’s trusted publisher for `.github/workflows/release.yml`.
+All delivery milestones are complete. Release `v0.1.1` was published publicly as `polyglot-agent-harness@0.1.1` through the configured GitHub Actions trusted publisher, with a signed provenance statement. The repeatable operational validation sequence is retained in [the release-readiness runbook](../operations/release-readiness.md).

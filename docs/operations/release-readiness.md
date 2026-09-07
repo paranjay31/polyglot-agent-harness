@@ -47,3 +47,7 @@ pnpm pack
 ```
 
 Before triggering `.github/workflows/release.yml`, configure the npm trusted publisher for that exact workflow and set the package `repository.url` to its exact public GitHub URL. The release workflow uses Node 24 so npm trusted publishing can issue provenance.
+
+## Released baseline
+
+The public `v0.1.1` release was published through the configured GitHub Actions trusted publisher with a signed provenance statement. For future releases, bump the package version, run the checks above, commit the change, and push a matching `v*` Git tag to trigger the same workflow.
