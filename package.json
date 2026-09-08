@@ -1,6 +1,6 @@
 {
   "name": "polyglot-agent-harness",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Extensible, repository-aware coding-agent harness",
   "license": "MIT",
   "repository": {
