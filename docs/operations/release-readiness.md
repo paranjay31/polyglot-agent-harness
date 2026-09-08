@@ -50,4 +50,4 @@ Before triggering `.github/workflows/release.yml`, configure the npm trusted pub
 
 ## Released baseline
 
-The public `v0.1.1` release was published through the configured GitHub Actions trusted publisher with a signed provenance statement. For future releases, bump the package version, run the checks above, commit the change, and push a matching `v*` Git tag to trigger the same workflow.
+The public `v0.1.2` release was published through the configured GitHub Actions trusted publisher with a signed provenance statement. For future releases, bump the package version, run the checks above, commit the change, and push a matching `v*` Git tag to trigger the same workflow.

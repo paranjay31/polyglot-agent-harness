@@ -26,4 +26,4 @@ This plan is ordered by a working vertical slice, not by the number of modules c
 
 ## Remaining delivery work
 
-All delivery milestones are complete. Release `v0.1.1` was published publicly as `polyglot-agent-harness@0.1.1` through the configured GitHub Actions trusted publisher, with a signed provenance statement. The repeatable operational validation sequence is retained in [the release-readiness runbook](../operations/release-readiness.md).
+All delivery milestones are complete. Release `v0.1.2` was published publicly as `polyglot-agent-harness@0.1.2` through the configured GitHub Actions trusted publisher, with a signed provenance statement. The repeatable operational validation sequence is retained in [the release-readiness runbook](../operations/release-readiness.md).
