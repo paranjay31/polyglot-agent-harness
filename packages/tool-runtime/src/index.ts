@@ -17,7 +17,7 @@ function classifyCommand(command: Command): Command["risk"] {
   if (["rm", "sudo", "curl", "wget", "ssh", "docker", "podman"].includes(program ?? "")) return "potentially_destructive";
   if (program === "git" && !/^(status|diff|log|show|branch)(\s|$)/.test(joined)) return "potentially_destructive";
   if (program === "pnpm" || program === "npm" || program === "yarn" || program === "bun") return /^(test|run (test|build|lint|format)|build|lint)(\s|$)/.test(joined) ? "safe" : "potentially_destructive";
-  if (program === "mvn" || program === "gradle" || program === "./gradlew") return /^(test|package|build)(\s|$)/.test(joined) ? "safe" : "potentially_destructive";
+  if (program === "mvn" || program === "./mvnw" || program === "./mvnw.cmd" || program === "gradle" || program === "./gradlew") return /^(test|package|build)(\s|$)/.test(joined) ? "safe" : "potentially_destructive";
   if (program === "pytest" || (program === "python" && /^-m pytest(\s|$)/.test(joined))) return "safe";
   return "potentially_destructive";
 }
@@ -80,13 +80,14 @@ export function registerBuiltinTools(registry: ToolRegistry) {
     const gradle = await file("build.gradle") ?? await file("build.gradle.kts");
     const pyproject = await file("pyproject.toml");
     const pytest = await file("pytest.ini");
+    const mavenCommand = async () => await file("mvnw") ? "./mvnw" : await file("mvnw.cmd") ? "./mvnw.cmd" : "mvn";
     if (script === "test") {
-      if (maven) return ["mvn", "test"];
+      if (maven) return [await mavenCommand(), "test"];
       if (gradle) return [await file("gradlew") ? "./gradlew" : "gradle", "test"];
       if (pyproject || pytest) return await file("uv.lock") ? ["uv", "run", "pytest"] : ["python", "-m", "pytest"];
     }
     if (script === "build") {
-      if (maven) return ["mvn", "package", "-DskipTests"];
+      if (maven) return [await mavenCommand(), "package", "-DskipTests"];
       if (gradle) return [await file("gradlew") ? "./gradlew" : "gradle", "build", "-x", "test"];
       if (pyproject) return ["python", "-m", "build"];
     }
@@ -159,7 +160,7 @@ export function registerBuiltinTools(registry: ToolRegistry) {
   registry.register({ name: "lsp_hover", description: "Get LSP hover information at a repository-relative source location.", permission: "read", modelSchema: { type: "object", properties: { path: { type: "string" }, line: { type: "number" }, column: { type: "number" } }, required: ["path", "line", "column"] }, inputSchema: location, async execute({ path, line, column }, ctx) { const file = await ctx.workspace.resolveUserPath(path); const result = await languageServer(ctx).hover({ file, line, column }); return { content: JSON.stringify(result), data: result }; } });
   registry.register({ name: "lsp_symbols", description: "Get LSP document symbols for a repository-relative source file.", permission: "read", modelSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, inputSchema: z.object({ path: z.string() }), async execute({ path }, ctx) { const result = await languageServer(ctx).symbols(await ctx.workspace.resolveUserPath(path)); return { content: JSON.stringify(result), data: result }; } });
   registry.register({ name: "lsp_diagnostics", description: "Get LSP diagnostics for a repository-relative source file.", permission: "read", modelSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, inputSchema: z.object({ path: z.string() }), async execute({ path }, ctx) { const result = await languageServer(ctx).diagnostics(await ctx.workspace.resolveUserPath(path)); return { content: JSON.stringify(result), data: result }; } });
-  for (const script of ["test", "build", "lint", "format"] as const) registry.register({ name: `run_${script}`, description: `Run the project-declared ${script} script without constructing a shell command.`, permission: script === "format" ? "edit" : "shell", risk: script === "format" ? "potentially_destructive" : "safe", modelSchema: { type: "object", properties: {}, additionalProperties: false }, inputSchema: z.object({}), prepareCommand: async (_input, ctx) => ({ argv: await declaredScript(ctx, script), cwd: ctx.workspace.root }), async execute(_input, ctx) { const execution = await ctx.sandbox.execute({ ...ctx.preparedCommand!, signal: ctx.signal }); return { content: execution.stdout + execution.stderr, execution }; } });
+  for (const script of ["test", "build", "lint", "format"] as const) registry.register({ name: `run_${script}`, description: `Run the project-declared ${script} script without constructing a shell command. Maven projects use the repository Maven Wrapper when present and system Maven otherwise.`, permission: script === "format" ? "edit" : "shell", risk: script === "format" ? "potentially_destructive" : "safe", modelSchema: { type: "object", properties: {}, additionalProperties: false }, inputSchema: z.object({}), prepareCommand: async (_input, ctx) => ({ argv: await declaredScript(ctx, script), cwd: ctx.workspace.root }), async execute(_input, ctx) { const execution = await ctx.sandbox.execute({ ...ctx.preparedCommand!, signal: ctx.signal }); return { content: execution.stdout + execution.stderr, execution }; } });
   registry.register({ name: "git_status", description: "Read the current Git working-tree status.", permission: "read", modelSchema: { type: "object", properties: {}, additionalProperties: false }, inputSchema: z.object({}), async execute(_input, ctx) { const execution = await ctx.sandbox.execute({ argv: ["git", "status", "--short"], cwd: ctx.workspace.root, signal: ctx.signal, risk: "safe" }); return { content: execution.stdout + execution.stderr, execution }; } });
   registry.register({ name: "git_branch", description: "List local and current Git branches without changing the repository.", permission: "read", modelSchema: { type: "object", properties: {}, additionalProperties: false }, inputSchema: z.object({}), async execute(_input, ctx) { const execution = await ctx.sandbox.execute({ argv: ["git", "branch", "--no-color"], cwd: ctx.workspace.root, signal: ctx.signal, risk: "safe" }); return { content: execution.stdout + execution.stderr, execution }; } });
   registry.register({ name: "git_diff", description: "Read the unstaged Git diff; optional path is workspace-relative.", permission: "read", modelSchema: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false }, inputSchema: z.object({ path: z.string().optional() }), async execute({ path }, ctx) { if (path) await ctx.workspace.resolveUserPath(path); const execution = await ctx.sandbox.execute({ argv: path ? ["git", "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--", path] : ["git", "--no-pager", "diff", "--no-ext-diff", "--no-textconv"], cwd: ctx.workspace.root, signal: ctx.signal, risk: "safe" }); return { content: execution.stdout + execution.stderr, execution }; } });
