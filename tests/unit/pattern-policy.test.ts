@@ -7,6 +7,6 @@ describe("command pattern policy", () => {
     expect(policy.decide({ permission: "shell", target: "pnpm test --runInBand", risk: "safe" })).toBe("allow");
     expect(policy.decide({ permission: "shell", target: "npm test", risk: "safe" })).toBe("ask");
     expect(policy.decide({ permission: "shell", target: "pnpm install", risk: "safe" })).toBe("deny");
-    expect(policy.decide({ permission: "shell", target: "rm -rf x", risk: "destructive" })).toBe("ask");
+    expect(policy.decide({ permission: "shell", target: "rm -rf x", risk: "destructive" })).toBe("deny");
   });
 });

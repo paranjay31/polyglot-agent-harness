@@ -47,7 +47,7 @@ describe("remote worker", () => it("maps opaque workspace IDs to confined local 
 
 it("confines remote command working directories before execution", async () => {
   const root = await mkdtemp(join(tmpdir(), "harness-worker-command-")); const commands: Array<{ cwd?: string }> = [];
-  const worker = new RemoteWorker({ project: root }, { execute: async command => { commands.push(command); return { exitCode: 0, stdout: "ok", stderr: "", durationMs: 1 }; }, readFile: async () => Buffer.alloc(0), writeFile: async () => {} });
+  const worker = new RemoteWorker({ project: root }, { isolated: true, execute: async command => { commands.push(command); return { exitCode: 0, stdout: "ok", stderr: "", durationMs: 1 }; }, readFile: async () => Buffer.alloc(0), writeFile: async () => {} });
   await worker.execute("project", { argv: ["git", "status"], cwd: "." });
   expect(commands).toEqual([expect.objectContaining({ cwd: root })]);
   await expect(worker.execute("project", { argv: ["git", "status"], cwd: "../outside" })).rejects.toThrow("escapes workspace");

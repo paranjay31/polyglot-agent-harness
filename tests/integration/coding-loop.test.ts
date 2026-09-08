@@ -21,7 +21,7 @@ describe("coding-loop integration", () => {
     const local = new LocalSandbox(), commands: string[] = [];
     const sandbox: Sandbox = { readFile: local.readFile, writeFile: local.writeFile, execute: async command => { commands.push(command.argv.join(" ")); return { exitCode: 0, stdout: "verified", stderr: "", durationMs: 1 }; } };
     const tools = new ToolRegistry(); registerBuiltinTools(tools); const events = new InMemoryEventSink();
-    const context = { workspace: new WorkspaceBoundary(root), sandbox, policy: new RulePolicyEngine({ edit: "allow", shell: "allow" }), knowledge: new LocalRepositoryKnowledgeProvider({ root }) };
+    const context = { workspace: new WorkspaceBoundary(root), sandbox, approve: async () => true, policy: new RulePolicyEngine({ edit: "allow", shell: "allow" }), knowledge: new LocalRepositoryKnowledgeProvider({ root }) };
     const runtime = new AgentRuntime(new ScriptedModelProvider([{ kind: "tool_calls", calls: [{ id: "edit", name: "edit_file", input: { path: "note.txt", oldText: "before", newText: "after" } }] }, { kind: "text", text: "Updated and verified." }]), tools, new ProgressiveContextEngine(context.knowledge), events, context, new ToolVerificationRunner(await new RepositoryVerificationPlanner(root).commands(), tools, context));
     const result = await runtime.run({ id: "integration", prompt: "Update note.txt", workspace: root });
     expect(await readFile(join(root, "note.txt"), "utf8")).toBe("after\n");

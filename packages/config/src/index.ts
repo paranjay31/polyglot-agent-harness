@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { realpath } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
@@ -5,3 +7,14 @@ export const ModelTargetSchema = z.object({ provider: z.enum(["openai-compatible
 export const AgentConfigSchema = z.object({ model: ModelTargetSchema.extend({ fallbacks: z.array(ModelTargetSchema).default([]), roles: z.object({ planning: ModelTargetSchema.optional(), coding: ModelTargetSchema.optional(), exploration: ModelTargetSchema.optional(), summarization: ModelTargetSchema.optional(), review: ModelTargetSchema.optional(), commit_message: ModelTargetSchema.optional() }).default({}) }).default({ provider: "openai-compatible", fallbacks: [], roles: {} }), repositories: z.record(z.string().min(1)).default({}), permissions: z.object({ mode: z.enum(["review", "accept-edits", "auto"]).default("review"), rules: z.array(z.object({ permission: z.enum(["read", "write", "edit", "shell", "git", "network", "mcp", "external-directory", "subagent"]).optional(), target: z.string().min(1).max(500), decision: z.enum(["allow", "ask", "deny"]) })).default([]) }).default({ mode: "review", rules: [] }), sandbox: z.object({ kind: z.enum(["local", "docker", "podman", "remote"]).default("local"), image: z.string().optional(), remote: z.object({ endpoint: z.string().url(), workspaceId: z.string().min(1), bearerTokenEnv: z.string().min(1).optional() }).optional() }).default({ kind: "local" }), lsp: z.object({ command: z.string().min(1), args: z.array(z.string()).default([]) }).optional(), skills: z.object({ enabled: z.array(z.string()).default([]) }).default({ enabled: [] }), mcp: z.array(z.object({ id: z.string(), transport: z.enum(["stdio", "http"]), command: z.string().optional(), args: z.array(z.string()).optional(), endpoint: z.string().url().optional(), headers: z.record(z.string()).optional(), bearerTokenEnv: z.string().min(1).optional() })).default([]) }).superRefine((config, context) => { if (config.sandbox.kind === "remote" && !config.sandbox.remote) context.addIssue({ code: z.ZodIssueCode.custom, path: ["sandbox", "remote"], message: "remote sandbox requires remote endpoint and workspaceId" }); });
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export async function loadRepositoryConfig(workspace: string): Promise<AgentConfig> { const path = join(workspace, ".agent", "config.json"); const raw = await readFile(path, "utf8").catch(() => "{}"); try { return AgentConfigSchema.parse(JSON.parse(raw)); } catch (error) { throw new Error(`Invalid ${path}: ${error instanceof Error ? error.message : String(error)}`); } }
+
+/** Trust is supplied by the operator environment, never by repository content. */
+export async function repositoryConfigDigest(workspace: string, config: AgentConfig): Promise<string> {
+  return createHash("sha256").update(await realpath(workspace)).update("\0").update(JSON.stringify(config)).digest("hex");
+}
+export async function assertTrustedRepositoryConfig(workspace: string, config: AgentConfig, trustedDigest = process.env.AGENT_TRUSTED_CONFIG_SHA256): Promise<void> {
+  const requiresTrust = config.sandbox.kind !== "local" || config.mcp.length > 0 || Boolean(config.lsp) || Object.keys(config.repositories).length > 0 || config.permissions.rules.length > 0 || config.permissions.mode !== "review";
+  if (requiresTrust && trustedDigest !== await repositoryConfigDigest(workspace, config)) {
+    throw new Error("Repository configuration requires operator trust before enabling sandbox configuration, MCP, LSP, additional repositories, or permission overrides. Review .agent/config.json, run agent config-digest --workspace PATH, and pin that value in AGENT_TRUSTED_CONFIG_SHA256 outside the repository.");
+  }
+}

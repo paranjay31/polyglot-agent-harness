@@ -7,6 +7,7 @@ COPY plugins ./plugins
 RUN corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm build
 
 FROM node:20-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends docker.io && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

@@ -1,5 +1,5 @@
 import type { Json } from "../../shared/src/index.js";
-export type AgentEventType = "agent.started" | "plan.created" | "model.requested" | "tool.requested" | "tool.approved" | "tool.denied" | "tool.executed" | "context.compacted" | "budget.exhausted" | "verification.started" | "verification.completed" | "agent.completed" | "agent.failed" | "agent.cancelled";
+export type AgentEventType = "agent.started" | "plan.created" | "model.requested" | "tool.requested" | "tool.approved" | "tool.denied" | "tool.executed" | "context.compacted" | "budget.exhausted" | "verification.started" | "verification.completed" | "agent.completed" | "agent.unverified" | "agent.failed" | "agent.cancelled";
 export interface AgentEvent { id: string; sessionId: string; turn: number; type: AgentEventType; timestamp: string; data: Json }
 export interface EventSink { append(event: AgentEvent): Promise<void> }
 export class InMemoryEventSink implements EventSink { readonly events: AgentEvent[] = []; async append(event: AgentEvent) { this.events.push(event); } }

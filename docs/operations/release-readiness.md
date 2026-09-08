@@ -27,10 +27,10 @@ Start Docker Desktop (or make Podman available), then check the daemon before ru
 
 ```bash
 docker version
-pnpm test -- tests/unit/container-sandbox.test.ts
+AGENT_CONTAINER_E2E=1 pnpm test -- tests/integration/container-isolation.test.ts
 ```
 
-For a real remote-worker validation, export a long random `AGENT_REMOTE_WORKER_TOKEN`, create `deploy/remote-worker/workspace`, and start the loopback-only Compose template:
+For a real remote-worker validation, export a long random `AGENT_REMOTE_WORKER_TOKEN`, set `AGENT_REMOTE_WORKSPACE_PATH` to the canonical absolute repository path on the Docker daemon host, and start the loopback-only Compose template:
 
 ```bash
 docker compose -f deploy/remote-worker/compose.yaml up --build

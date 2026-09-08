@@ -7,9 +7,11 @@ services:
       PORT: "8790"
       AGENT_REMOTE_WORKER_HOST: "0.0.0.0"
       AGENT_REMOTE_WORKER_TOKEN: ${AGENT_REMOTE_WORKER_TOKEN:?set a long random token in your environment}
-      AGENT_REMOTE_WORKSPACES: '{"my-repository":"/workspaces/my-repository"}'
+      AGENT_REMOTE_WORKSPACES: '{"my-repository":"${AGENT_REMOTE_WORKSPACE_PATH:?set a canonical absolute workspace path}"}'
+      AGENT_REMOTE_IMAGE: ${AGENT_REMOTE_IMAGE:-node:20-bookworm-slim}
     ports:
       - "127.0.0.1:8790:8790"
     volumes:
-      - ./workspace:/workspaces/my-repository:rw
+      - ${AGENT_REMOTE_WORKSPACE_PATH}:${AGENT_REMOTE_WORKSPACE_PATH}:rw
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
